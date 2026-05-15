@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-REWARDS All Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --primary: #9d3cfb; --bg: #0b0b0b; --card: #161616; --gold: #ffca28; --win: #4caf50; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; user-select: none; overflow-x: hidden; }
+        
+        /* Navbar */
+        .navbar { display: flex; justify-content: space-between; padding: 15px; background: var(--card); border-bottom: 2px solid #222; position: sticky; top: 0; z-index: 100; }
+        .bal-box { background: rgba(255, 202, 40, 0.1); padding: 5px 12px; border-radius: 15px; color: var(--gold); font-weight: bold; border: 1px solid var(--gold); }
+
+        /* Menu */
+        .container { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .card { background: var(--card); border-radius: 18px; padding: 20px; text-align: center; border: 1px solid #252525; transition: 0.3s; }
+        .card:active { transform: scale(0.92); border-color: var(--primary); }
+        .card i { font-size: 35px; display: block; margin-bottom: 8px; filter: drop-shadow(0 0 5px var(--primary)); }
+
+        /* Overlay */
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .close { position: absolute; top: 20px; right: 20px; font-size: 40px; color: #555; }
+        
+        .game-view { width: 95%; text-align: center; animation: pop 0.3s; }
+        @keyframes pop { from { transform: scale(0.8); } to { transform: scale(1); } }
+
+        .btn-action { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 80%; margin-top: 20px; }
+        
+        /* Baraban */
+        #wheel { 
+            width: 240px; height: 240px; border-radius: 50%; border: 8px solid #333; position: relative;
+            transition: transform 4s cubic-bezier(0.1, 0, 0, 1);
+            background: conic-gradient(var(--primary) 0 45deg, #222 45deg 90deg, var(--gold) 90deg 135deg, #222 135deg 180deg, var(--primary) 180deg 225deg, #222 225deg 270deg, var(--gold) 270deg 315deg, #222 315deg 360deg);
+        }
+        .num { position: absolute; width: 100%; height: 100%; text-align: center; font-weight: bold; font-size: 20px; padding-top: 10px; }
+
+        /* Boshqa animatsiyalar */
+        .dice-anim { font-size: 80px; transition: 0.5s; }
+        .win-glow { animation: glow 0.5s infinite; }
+        @keyframes glow { 0%, 100% { color: white; } 50% { color: var(--win); transform: scale(1.1); } }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <b>X-REWARDS PRO</b>
+        <div class="bal-box">🪙 <span id="bal">100</span></div>
+    </div>
+
+    <div class="container">
+        <div class="card" onclick="openGame('wheel')"><i>🎡</i><b>Wheel</b></div>
+        <div class="card" onclick="openGame('slots')"><i>🎰</i><b>Slots</b></div>
+        <div class="card" onclick="openGame('dice')"><i>🎲</i><b>Dice</b></div>
+        <div class="card" onclick="openGame('coin')"><i>🪙</i><b>Coin</b></div>
+        <div class="card" onclick="openGame('box')"><i>🎁</i><b>Box</b></div>
+        <div class="card" onclick="openGame('apple')"><i>🍎</i><b>Apple</b></div>
+        <div class="card" onclick="openGame('rps')"><i>✂️</i><b>RPS</b></div>
+        <div class="card" onclick="openGame('card')"><i>🃏</i><b>Cards</b></div>
+        <div class="card" onclick="openGame('guess')"><i>🔢</i><b>Guess</b></div>
+        <div class="card" onclick="openGame('bomb')"><i>💣</i><b>Mines</b></div>
+    </div>
+
+    <div id="overlay">
+        <div class="close" onclick="closeGame()">×</div>
+        <div id="game-content" class="game-view"></div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        let balance = 100;
+        let rotation = 0;
+        tg.expand();
+
+        function updateBal() { document.getElementById('bal').innerText = balance; }
+        function pay() { if(balance < 1) { alert("Tanga yetarli emas!"); return false; } balance -= 1; updateBal(); return true; }
+        function getWin() { return Math.floor(Math.random() * 3) + 1; }
+
+        function openGame(game) {
+            const c = document.getElementById('game-content');
+            document.getElementById('overlay').style.display = 'flex';
+            c.innerHTML = "";
+
+            if(game === 'wheel') {
+                c.innerHTML = `
+                    <div style="position:relative; width:240px; margin:auto;">
+                        <div style="position:absolute; top:-15px; left:50%; transform:translateX(-50%); border-top:25px solid white; border-left:15px solid transparent; border-right:15px solid transparent; z-index:10;"></div>
+                        <div id="wheel">
+                            <div class="num" style="transform:rotate(22deg)">1</div>
+                            <div class="num" style="transform:rotate(112deg)">2</div>
+                            <div class="num" style="transform:rotate(202deg)">3</div>
+                            <div class="num" style="transform:rotate(292deg)">1</div>
+                        </div>
+                    </div>
+                    <h2 id="msg">Omad!</h2>
+                    <button class="btn-action" onclick="runWheel()">AYLANTIRISH (-1)</button>`;
+            } else if(game === 'slots') {
+                c.innerHTML = `<div id="res" style="font-size:60px; background:#222; padding:20px; border-radius:15px;">❓ ❓ ❓</div><button class="btn-action" onclick="runSlots()">TORTISH (-1)</button>`;
+            } else if(game === 'dice') {
+                c.innerHTML = `<div id="res" class="dice-anim">🎲</div><button class="btn-action" onclick="runDice()">TASHLASH (-1)</button>`;
+            } else if(game === 'coin') {
+                c.innerHTML = `<div id="res" style="font-size:100px">🪙</div><div style="display:flex; gap:10px; justify-content:center"><button class="btn-action" onclick="runCoin('B')">Burgut</button><button class="btn-action" onclick="runCoin('G')">Gerb</button></div>`;
+            } else if(game === 'box') {
+                c.innerHTML = `<div style="display:flex; gap:20px; justify-content:center"><div onclick="runBox(this)" style="font-size:70px">🎁</div><div onclick="runBox(this)" style="font-size:70px">🎁</div><div onclick="runBox(this)" style="font-size:70px">🎁</div></div><p>Sovg'ani tanlang!</p>`;
+            } else if(game === 'apple') {
+                c.innerHTML = `<div id="res" style="font-size:100px">🍏</div><button class="btn-action" onclick="runApple()">OLMA TANLASH (-1)</button>`;
+            } else if(game === 'rps') {
+                c.innerHTML = `<div id="res" style="font-size:100px">❔</div><div style="display:flex; gap:5px"><button class="btn-action" onclick="runRPS('✊')">✊</button><button class="btn-action" onclick="runRPS('✋')">✋</button><button class="btn-action" onclick="runRPS('✌️')">✌️</button></div>`;
+            } else if(game === 'card') {
+                c.innerHTML = `<div id="res" style="font-size:100px">🃏</div><button class="btn-action" onclick="runCard()">OCHISH (-1)</button>`;
+            } else if(game === 'guess') {
+                c.innerHTML = `<p>1, 2 yoki 3?</p><div style="display:flex; gap:10px; justify-content:center"><button class="btn-action" style="width:60px" onclick="runGuess(1)">1</button><button class="btn-action" style="width:60px" onclick="runGuess(2)">2</button><button class="btn-action" style="width:60px" onclick="runGuess(3)">3</button></div>`;
+            } else if(game === 'bomb') {
+                c.innerHTML = `<div id="res" style="font-size:100px">⛏️</div><button class="btn-action" onclick="runBomb()">QAZISH (-1)</button>`;
+            }
+        }
+
+        // Mantiqlar
+        function runWheel() {
+            if(!pay()) return;
+            const w = document.getElementById('wheel');
+            const m = document.getElementById('msg');
+            rotation += 1800 + Math.floor(Math.random()*360);
+            w.style.transform = `rotate(${rotation}deg)`;
+            setTimeout(() => {
+                let win = getWin(); balance += win; updateBal();
+                m.innerText = "YUTUQ: " + win + " 🪙"; m.classList.add('win-glow');
+            }, 4000);
+        }
+
+        function runSlots() {
+            if(!pay()) return;
+            const s = ['🍒','🍋','💎','7️⃣'];
+            let a=s[Math.floor(Math.random()*4)], b=s[Math.floor(Math.random()*4)], c=s[Math.floor(Math.random()*4)];
+            document.getElementById('res').innerText = `${a} ${b} ${c}`;
+            if(a===b || b===c) { let w=getWin(); balance+=w; alert("YUTUQ: "+w); }
+            updateBal();
+        }
+
+        function runDice() {
+            if(!pay()) return;
+            const d = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+            let r = Math.floor(Math.random()*6);
+            const res = document.getElementById('res');
+            res.style.transform = "rotate(360deg)";
+            setTimeout(() => {
+                res.innerText = d[r]; res.style.transform = "rotate(0deg)";
+                if(r > 2) { let w=getWin(); balance+=w; }
+                updateBal();
+            }, 300);
+        }
+
+        function runCoin(p) {
+            if(!pay()) return;
+            let res = Math.random() > 0.5 ? 'B' : 'G';
+            document.getElementById('res').innerText = res === 'B' ? '🦅' : '🏛️';
+            if(p === res) { let w=getWin(); balance+=w; alert("TOPDINGIZ! +"+w); }
+            updateBal();
+        }
+
+        function runBox(el) {
+            if(!pay()) return;
+            let w = getWin(); el.innerText = "💰"; balance += w;
+            alert("Sovg'a: " + w + " tanga!"); updateBal();
+        }
+
+        function runApple() {
+            if(!pay()) return;
+            let ok = Math.random() > 0.4;
+            document.getElementById('res').innerText = ok ? "🍎" : "🐛";
+            if(ok) { let w=getWin(); balance+=w; }
+            updateBal();
+        }
+
+        function runRPS(p) {
+            if(!pay()) return;
+            const ops = ['✊','✋','✌️']; let r = ops[Math.floor(Math.random()*3)];
+            document.getElementById('res').innerText = r;
+            if(p !== r) { let w=getWin(); balance+=w; }
+            updateBal();
+        }
+
+        function runCard() {
+            if(!pay()) return;
+            const cards = ['♠️','♥️','♣️','♦️'];
+            document.getElementById('res').innerText = cards[Math.floor(Math.random()*4)];
+            let w=getWin(); balance+=w; updateBal();
+        }
+
+        function runGuess(n) {
+            if(!pay()) return;
+            let r = Math.floor(Math.random()*3)+1;
+            if(n === r) { let w=getWin(); balance+=w; alert("TO'G'RI! +"+w); }
+            else alert("XATO! Javob: "+r);
+            updateBal();
+        }
+
+        function runBomb() {
+            if(!pay()) return;
+            let ok = Math.random() > 0.4;
+            document.getElementById('res').innerText = ok ? "💎" : "💥";
+            if(ok) { let w=getWin(); balance+=w; }
+            else alert("Portladi!");
+            updateBal();
+        }
+
+        function closeGame() { document.getElementById('overlay').style.display = 'none'; }
+        updateBal();
+    </script>
+</body>
+</html>
